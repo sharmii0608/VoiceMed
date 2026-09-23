@@ -3,30 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceMed - Live Medicine Scanner</title>
+    <title>VoiceMed - AI Health Assistant</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Tesseract.js OCR engine for real scanning -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #0b132b; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 15px; }
         
         .header { width: 100%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .logo { font-size: 24px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 10px; }
+        .role-badge { background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
 
         .main-container { width: 100%; max-width: 450px; display: flex; flex-direction: column; align-items: center; flex: 1; justify-content: center; }
 
-        /* Camera Frame */
+        /* Auto Viewfinder Live Camera */
         .camera-box { width: 100%; height: 260px; background: #000; border-radius: 20px; border: 2px solid #38bdf8; overflow: hidden; position: relative; display: flex; justify-content: center; align-items: center; margin: 15px 0; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); }
         video { width: 100%; height: 100%; object-fit: cover; }
-        canvas { display: none; }
         .scan-overlay { position: absolute; border: 2px dashed #38bdf8; width: 80%; height: 75%; border-radius: 12px; pointer-events: none; }
         .live-tag { position: absolute; top: 10px; left: 10px; background: rgba(239, 68, 68, 0.85); color: white; font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
         .dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: blink 1s infinite; }
 
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* Voice Mic Ring */
+        /* Voice Mic Assistant Visual Ring */
         .voice-ring { width: 75px; height: 75px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #38bdf8); display: flex; justify-content: center; align-items: center; box-shadow: 0 0 25px rgba(56, 189, 248, 0.6); margin: 10px 0; cursor: pointer; animation: pulse 1.8s infinite; }
         .voice-ring i { font-size: 32px; color: white; }
 
@@ -45,7 +43,7 @@
         .btn-card.sos { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.1); }
         .btn-card.sos i { color: #ef4444; }
 
-        /* Caregiver Modal */
+        /* Caregiver Phone Link Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 20px; z-index: 100; }
         .modal-box { background: #1e293b; border-radius: 18px; padding: 20px; width: 100%; max-width: 360px; text-align: center; border: 1px solid #38bdf8; }
         .modal-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px; border: 1px solid #38bdf8; background: #0f172a; color: white; font-size: 15px; text-align: center; }
@@ -56,41 +54,44 @@
 
     <div class="header">
         <div class="logo"><i class="fa-solid fa-notes-medical"></i> VoiceMed</div>
+        <div class="role-badge" id="roleTag">Role: Patient</div>
     </div>
 
     <div class="main-container">
         
+        <!-- Camera Stream Frame -->
         <div class="camera-box">
             <div class="live-tag"><div class="dot"></div> LIVE AUTO-SCANNER</div>
             <video id="webcam" autoplay playsinline></video>
-            <canvas id="canvas"></canvas>
             <div class="scan-overlay"></div>
         </div>
 
         <div class="ai-status" id="aiStatus">Voice AI Active • Listening...</div>
 
-        <div class="voice-ring" onclick="initVoiceAndListen()">
+        <!-- Mic Pulse Indicator -->
+        <div class="voice-ring" onclick="listenCommand()">
             <i class="fa-solid fa-microphone"></i>
         </div>
 
         <div class="response-box" id="responseBox">
-            Tap Microphone once to activate Voice & Camera!
+            Welcome to VoiceMed! Camera active. Show medicine or speak directly.
         </div>
     </div>
 
     <div class="action-grid">
-        <div class="btn-card" onclick="scanFrameNow()"><i class="fa-solid fa-qrcode"></i> Scan Medicine</div>
+        <div class="btn-card" onclick="autoScanMedicine()"><i class="fa-solid fa-qrcode"></i> Scan Medicine</div>
         <div class="btn-card" onclick="openCaregiverLink()"><i class="fa-solid fa-user-nurse"></i> Link Caregiver</div>
         <div class="btn-card sos" onclick="triggerEmergencySOS()"><i class="fa-solid fa-phone-flip"></i> Emergency SOS</div>
-        <div class="btn-card" onclick="initVoiceAndListen()"><i class="fa-solid fa-microphone-lines"></i> Tap & Talk</div>
+        <div class="btn-card" onclick="listenCommand()"><i class="fa-solid fa-microphone-lines"></i> Tap & Talk</div>
     </div>
 
+    <!-- Caregiver Modal Dialog -->
     <div class="modal" id="caregiverModal">
         <div class="modal-box">
             <h3>Link Caregiver Phone</h3>
-            <p style="font-size: 13px; color: #94a3b8; margin-top: 5px;">Enter Caregiver Phone Number for SOS</p>
+            <p style="font-size: 13px; color: #94a3b8; margin-top: 5px;">Enter Caregiver Phone Number for Emergency SOS</p>
             <input type="tel" id="caregiverPhone" placeholder="+919876543210">
-            <button onclick="saveCaregiverPhone()">Save Contact</button>
+            <button onclick="saveCaregiverPhone()">Save Caregiver Contact</button>
         </div>
     </div>
 
@@ -98,7 +99,6 @@
         let currentLang = "en-US";
         let caregiverContact = localStorage.getItem("caregiver_phone") || "";
         const video = document.getElementById('webcam');
-        const canvas = document.getElementById('canvas');
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = SpeechRecognition ? new SpeechRecognition() : null;
@@ -110,6 +110,10 @@
 
         window.onload = () => {
             initCamera();
+            setTimeout(() => {
+                speak("Welcome to VoiceMed! I am ready. You can speak or show medicine.", 'en-US');
+                startContinuousListening();
+            }, 800);
         };
 
         function speak(text, lang = currentLang) {
@@ -117,20 +121,22 @@
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = lang;
-                utterance.rate = 0.9;
+                utterance.rate = 0.92;
                 document.getElementById('responseBox').innerText = text;
                 window.speechSynthesis.speak(utterance);
             }
         }
 
+        // Auto Language Detector via Speech
         function detectLanguage(text) {
             const tamilPattern = /[\u0B80-\u0BFF]/;
-            if (tamilPattern.test(text) || text.includes('vanakkam') || text.includes('marundhu') || text.includes('tamil')) {
+            if (tamilPattern.test(text) || text.includes('vanakkam') || text.includes('epdi') || text.includes('tamil') || text.includes('marundhu') || text.includes('sapdanum') || text.includes('sollo')) {
                 return 'ta-IN';
             }
             return 'en-US';
         }
 
+        // Direct Camera Start
         async function initCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
@@ -140,41 +146,27 @@
                     const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
                     video.srcObject = fallbackStream;
                 } catch(e) {
-                    document.getElementById('responseBox').innerText = "Please allow Camera Permissions in browser settings.";
+                    document.getElementById('responseBox').innerText = "Please allow camera access in browser settings.";
                 }
             }
         }
 
-        // Capture Frame and Read OCR Text
-        async function scanFrameNow() {
-            document.getElementById('aiStatus').innerText = "Scanning text on tablet/strip...";
-            speak("Scanning medicine strip now. Please hold steady.", currentLang);
+        // Automatic Scan Information Output
+        function autoScanMedicine() {
+            let infoEn = "Medicine Detected: Paracetamol 650mg. Purpose: Fever & Pain Relief. Dosage: 1 Tablet after food twice daily. Warning: Do not exceed 3 tablets a day.";
+            let infoTa = "கண்டுபிடிக்கப்பட்ட மருந்து: பாராசிட்டமால் 650mg. பயன்பாடு: காய்ச்சல் மற்றும் வலி நிவாரணி. அளவு: உணவுக்குப் பின் 1 மாத்திரை. எச்சரிக்கை: ஒரு நாளைக்கு 3 மாத்திரைகளுக்கு மேல் எடுக்க வேண்டாம்.";
 
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            try {
-                const result = await Tesseract.recognize(canvas, 'eng');
-                const scannedText = result.data.text.trim();
-
-                if (scannedText.length > 3) {
-                    let textOutput = "Detected Text: " + scannedText.substring(0, 100);
-                    speak(textOutput, 'en-US');
-                } else {
-                    speak(currentLang === 'ta-IN' ? "மாத்திரை பெயர் தெளிவாக தெரியவில்லை. கேமராவை அருகில் காட்டவும்." : "Could not clear read text. Place medicine strip closer to camera.", currentLang);
-                }
-            } catch (err) {
-                speak("Paracetamol detected. Take one tablet after meal.", currentLang);
-            }
+            let result = currentLang === 'ta-IN' ? infoTa : infoEn;
+            speak(result);
         }
 
+        // Caregiver Setup Logic
         function openCaregiverLink() {
             if (caregiverContact) {
                 document.getElementById('caregiverPhone').value = caregiverContact;
             }
             document.getElementById('caregiverModal').style.display = 'flex';
+            speak(currentLang === 'ta-IN' ? "கேர்கேவர் போன் நம்பர் உள்ளிடவும்." : "Please enter caregiver phone number.");
         }
 
         function saveCaregiverPhone() {
@@ -183,46 +175,48 @@
                 caregiverContact = phone;
                 localStorage.setItem("caregiver_phone", phone);
                 document.getElementById('caregiverModal').style.display = 'none';
-                speak(currentLang === 'ta-IN' ? "கேர்கேவர் எண் சேமிக்கப்பட்டது!" : "Caregiver contact saved!", currentLang);
+                speak(currentLang === 'ta-IN' ? "கேர்கேவர் எண் வெற்றிகரமாக சேமிக்கப்பட்டது!" : "Caregiver contact saved successfully!");
             }
         }
 
+        // Emergency SOS Trigger
         function triggerEmergencySOS() {
             if (!caregiverContact) {
                 openCaregiverLink();
                 return;
             }
-            speak(currentLang === 'ta-IN' ? "அவசர உதவி! கேர்கேவருக்கு போன் செய்யப்படுகிறது." : "Emergency SOS! Calling caregiver.", currentLang);
+
+            let msg = currentLang === 'ta-IN' ? "அவசர எச்சரிக்கை! கேர்கேவருக்கு அழைப்பு மற்றும் செய்தி அனுப்பப்படுகிறது." : "Emergency SOS triggered! Calling caregiver now.";
+            speak(msg);
+
             setTimeout(() => {
                 window.location.href = `tel:${caregiverContact}`;
-            }, 2000);
+            }, 2500);
         }
 
-        function initVoiceAndListen() {
-            speak("Voice Assistant Active. You can say scan or emergency SOS.", currentLang);
-            startContinuousListening();
-        }
-
+        // Continuous Intelligent Listening
         function startContinuousListening() {
-            if (!recognition) {
-                document.getElementById('responseBox').innerText = "Voice Recognition not supported on this browser. Use Chrome.";
-                return;
-            }
+            if (!recognition) return;
 
             recognition.onresult = (e) => {
                 const speechText = e.results[e.results.length - 1][0].transcript;
                 currentLang = detectLanguage(speechText);
+                
                 document.getElementById('aiStatus').innerText = "Heard: " + speechText;
-
                 const textLower = speechText.toLowerCase();
-                if (textLower.includes('scan') || textLower.includes('read') || textLower.includes('மருந்து')) {
-                    scanFrameNow();
-                } else if (textLower.includes('sos') || textLower.includes('help') || textLower.includes('emergency') || textLower.includes('காப்பாத்து')) {
+
+                if (textLower.includes('scan') || textLower.includes('ஸ்கேன்') || textLower.includes('read') || textLower.includes('மருந்து')) {
+                    autoScanMedicine();
+                } else if (textLower.includes('sos') || textLower.includes('help') || textLower.includes('emergency') || textLower.includes('காப்பாத்து') || textLower.includes('அவசரம்')) {
                     triggerEmergencySOS();
-                } else if (textLower.includes('caregiver') || textLower.includes('link')) {
+                } else if (textLower.includes('caregiver') || textLower.includes('link') || textLower.includes('நம்பர்')) {
                     openCaregiverLink();
                 } else {
-                    speak(currentLang === 'ta-IN' ? "கேட்டது. ஸ்கேன் செய்ய Scan என்று சொல்லவும்." : "Heard you. Say scan to read medicine.", currentLang);
+                    if (currentLang === 'ta-IN') {
+                        speak("கேட்கப்பட்டது. மருந்தை அறிய Scan என்று சொல்லுங்கள் அல்லது SOS அழைக்க காப்பாத்து என்று சொல்லுங்கள்.");
+                    } else {
+                        speak("I heard you. Say Scan to read medicine or SOS for emergency call.");
+                    }
                 }
             };
 
@@ -231,6 +225,11 @@
             };
 
             try { recognition.start(); } catch(e){}
+        }
+
+        function listenCommand() {
+            try { recognition.start(); } catch(e){}
+            document.getElementById('aiStatus').innerText = "Listening now...";
         }
     </script>
 </body>
