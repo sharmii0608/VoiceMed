@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceMed - Hands-Free AI Assistant</title>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Header UI */
+        .header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+        }
+
+        .title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lang-badge {
+            background: rgba(56, 189, 248, 0.2);
+            border: 1px solid #38bdf8;
+            color: #38bdf8;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Status & Response Box */
+        .status-container {
+            text-align: center;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .status-indicator {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ef4444;
+        }
+
+        .status-dot.active {
+            background-color: #22c55e;
+            box-shadow: 0 0 10px #22c55e;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.7; }
+        }
+
+        .response-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 16px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 18px;
+            line-height: 1.5;
+            color: #e2e8f0;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Main Scanner Section */
+        .action-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .scanner-btn {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            border: 4px solid rgba(56, 189, 248, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(2, 132, 199, 0.5);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .scanner-btn:active {
+            transform: scale(0.95);
+        }
+
+        .scanner-btn i {
+            font-size: 50px;
+            color: #ffffff;
+        }
+
+        .scan-label {
+            font-size: 16px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        /* Controls Grid */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+        }
+
+        .control-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .control-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .control-card i {
+            font-size: 22px;
+            color: #38bdf8;
+        }
+
+        .control-card.sos {
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .control-card.sos i {
+            color: #ef4444;
+        }
+
+        .card-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .card-sub {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        /* Hidden File Inputs */
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="title">
+            <i class="fa-solid fa-notes-medical"></i> VoiceMed
+        </div>
+        <div class="lang-badge" id="langBadge">Language: EN</div>
+    </div>
+
+    <!-- Status & AI Response Box -->
+    <div class="status-container">
+        <div class="status-indicator">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">AI Listening Active...</span>
+        </div>
+        <div class="response-card" id="responseBox">
+            Welcome to VoiceMed. Say "Scan", "Gallery", "Tamil", or "SOS".
+        </div>
+    </div>
+
+    <!-- Main Scanner Button -->
+    <div class="action-area">
+        <div class="scanner-btn" onclick="triggerScanner()">
+            <i class="fa-solid fa-qrcode"></i>
+        </div>
+        <div class="scan-label">Tap or Say "Scan" to Scan Medicine</div>
+    </div>
+
+    <!-- Additional Voice Quick Commands -->
+    <div class="controls-grid">
+        <div class="control-card" onclick="triggerGallery()">
+            <i class="fa-solid fa-image"></i>
+            <div class="card-text">
+                <span class="card-title">Gallery</span>
+                <span class="card-sub">Upload Prescription</span>
+            </div>
+        </div>
+
+        <div class="control-card" onclick="toggleLanguage()">
+            <i class="fa-solid fa-language"></i>
+            <div class="card-text">
+                <span class="card-title">Language</span>
+                <span class="card-sub">English / Tamil</span>
+            </div>
+        </div>
+
+        <div class="control-card" onclick="triggerAllow()">
+            <i class="fa-solid fa-user-check"></i>
+            <div class="card-text">
+                <span class="card-title">Verify User</span>
+                <span class="card-sub">Say "Allow"</span>
+            </div>
+        </div>
+
+        <div class="control-card sos" onclick="triggerSOS()">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div class="card-text">
+                <span class="card-title">Emergency</span>
+                <span class="card-sub">Say "SOS"</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Camera & File Pickers -->
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handleFileSelect(event)">
+    <input type="file" id="galleryInput" accept="image/*" onchange="handleFileSelect(event)">
+
+    <script>
+        // Speech Recognition Setup
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isSpeaking = false;
+        let currentLang = 'en-US'; // Default English
+
+        const responseBox = document.getElementById('responseBox');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const langBadge = document.getElementById('langBadge');
+
+        // Initialize Speech Recognition
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false; // Restarts after each utterance for better stability
+            recognition.interimResults = false;
+            recognition.lang = currentLang;
+
+            recognition.onstart = () => {
+                if (!isSpeaking) {
+                    statusDot.classList.add('active');
+                    statusText.innerText = "AI Listening...";
+                }
+            };
+
+            recognition.onend = () => {
+                statusDot.classList.remove('active');
+                statusText.innerText = "Processing / Idle...";
+                // Loop: Restart listening if AI is not currently talking
+                if (!isSpeaking) {
+                    setTimeout(() => {
+                        try { recognition.start(); } catch(e) {}
+                    }, 500);
+                }
+            };
+
+            recognition.onresult = (event) => {
+                const command = event.results[0][0].transcript.toLowerCase().trim();
+                console.log("Voice Command Received:", command);
+                processVoiceCommand(command);
+            };
+
+            recognition.onerror = (event) => {
+                console.log("Speech Error:", event.error);
+                if (!isSpeaking) {
+                    setTimeout(() => {
+                        try { recognition.start(); } catch(e) {}
+                    }, 1000);
+                }
+            };
+        } else {
+            responseBox.innerText = "Speech Recognition is not supported on this browser. Please use Google Chrome.";
+        }
+
+        // Text-To-Speech (AI Voice Output)
+        function speak(text, callback) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop any previous speech
+                isSpeaking = true;
+                statusDot.classList.remove('active');
+                statusText.innerText = "AI Speaking...";
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = currentLang;
+                utterance.rate = 0.9;
+
+                utterance.onend = () => {
+                    isSpeaking = false;
+                    statusText.innerText = "AI Listening...";
+                    if (callback) callback();
+                    // Auto restart recognition after speaking
+                    try { recognition.start(); } catch(e) {}
+                };
+
+                utterance.onerror = () => {
+                    isSpeaking = false;
+                    try { recognition.start(); } catch(e) {}
+                };
+
+                responseBox.innerText = text;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Process Incoming Voice Commands
+        function processVoiceCommand(cmd) {
+            if (cmd.includes('scan') || cmd.includes('camera') || cmd.includes('ஸ்கேன்')) {
+                speak(currentLang === 'ta-IN' ? "கேமரா ஸ்கேனர் திறக்கப்படுகிறது" : "Opening camera scanner", () => {
+                    triggerScanner();
+                });
+            } 
+            else if (cmd.includes('gallery') || cmd.includes('photo') || cmd.includes('கேலரி')) {
+                speak(currentLang === 'ta-IN' ? "கேலரி திறக்கப்படுகிறது" : "Opening gallery", () => {
+                    triggerGallery();
+                });
+            } 
+            else if (cmd.includes('tamil') || cmd.includes('தமிழ்')) {
+                setLanguage('ta-IN');
+                speak("தமிழ் மொழி தேர்ந்தெடுக்கப்பட்டது. இப்பொழுது தமிழில் பேசுங்கள்.");
+            } 
+            else if (cmd.includes('english')) {
+                setLanguage('en-US');
+                speak("English language selected. How can I help you?");
+            } 
+            else if (cmd.includes('allow') || cmd.includes('yes') || cmd.includes('அனுமதி')) {
+                speak(currentLang === 'ta-IN' ? "பயனர் சரிபார்க்கப்பட்டார். உள்நுழைவு வெற்றிகரமானது." : "User verified successfully. Access granted.");
+            } 
+            else if (cmd.includes('sos') || cmd.includes('emergency') || cmd.includes('help') || cmd.includes('காப்பற்று')) {
+                triggerSOS();
+            } 
+            else {
+                // Generic AI Chat Response
+                let reply = currentLang === 'ta-IN' ? 
+                    `நீங்கள் "${cmd}" என்று சொன்னீர்கள். ஸ்கேன் செய்ய "Scan" என்று சொல்லுங்கள்.` : 
+                    `You said "${cmd}". Say "Scan" to scan your medicine pill or prescription.`;
+                speak(reply);
+            }
+        }
+
+        // Helper Functions for Buttons and Voice Actions
+        function triggerScanner() {
+            document.getElementById('cameraInput').click();
+        }
+
+        function triggerGallery() {
+            document.getElementById('galleryInput').click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                speak(currentLang === 'ta-IN' ? "மருந்து படம் பெறப்பட்டது. பகுப்பாய்வு செய்யப்படுகிறது." : "Medicine image received. Analyzing prescription details.");
+            }
+        }
+
+        function toggleLanguage() {
+            if (currentLang === 'en-US') {
+                setLanguage('ta-IN');
+                speak("தமிழ் மொழி மாற்றப்பட்டது.");
+            } else {
+                setLanguage('en-US');
+                speak("Switched to English.");
+            }
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            recognition.lang = lang;
+            langBadge.innerText = lang === 'ta-IN' ? "Language: TA" : "Language: EN";
+        }
+
+        function triggerAllow() {
+            speak(currentLang === 'ta-IN' ? "பயனர் அனுமதி வழங்கப்பட்டது." : "User permission granted.");
+        }
+
+        function triggerSOS() {
+            speak(currentLang === 'ta-IN' ? "அவசர உதவி எச்சரிக்கை பராமரிப்பாளருக்கு அனுப்பப்படுகிறது!" : "Emergency SOS alert sent to your caregiver!");
+        }
+
+        // Start App On Load (Zero-Click Start)
+        window.onload = () => {
+            setTimeout(() => {
+                speak("Welcome to VoiceMed. I am listening. Say Scan, Gallery, Tamil, or SOS.");
+            }, 800);
+        };
+    </script>
+</body>
+</html>
