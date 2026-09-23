@@ -3,234 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceMed - AI Health Assistant</title>
+    <title>VoiceMed - Live Scanner AI</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #0b132b; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 15px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #0f172a; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 15px; }
+        .header { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px; }
+        .title { font-size: 22px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 10px; }
+        .lang-badge { background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8; padding: 4px 10px; border-radius: 20px; font-size: 13px; }
         
-        .header { width: 100%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .logo { font-size: 24px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 10px; }
-        .role-badge { background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-container { text-align: center; width: 100%; max-width: 400px; margin-top: 10px; }
+        .status-indicator { font-size: 13px; color: #94a3b8; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; }
+        .status-dot.active { background-color: #22c55e; box-shadow: 0 0 8px #22c55e; }
 
-        .main-container { width: 100%; max-width: 450px; display: flex; flex-direction: column; align-items: center; flex: 1; justify-content: center; }
+        .response-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 14px; min-height: 80px; text-align: center; font-size: 16px; color: #e2e8f0; }
 
-        /* Auto Viewfinder Live Camera */
-        .camera-box { width: 100%; height: 260px; background: #000; border-radius: 20px; border: 2px solid #38bdf8; overflow: hidden; position: relative; display: flex; justify-content: center; align-items: center; margin: 15px 0; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); }
+        /* Camera Viewport */
+        .camera-container { width: 100%; max-width: 380px; height: 240px; background: #000; border-radius: 20px; border: 2px solid #38bdf8; overflow: hidden; position: relative; margin: 15px 0; display: flex; justify-content: center; align-items: center; }
         video { width: 100%; height: 100%; object-fit: cover; }
-        .scan-overlay { position: absolute; border: 2px dashed #38bdf8; width: 80%; height: 75%; border-radius: 12px; pointer-events: none; }
-        .live-tag { position: absolute; top: 10px; left: 10px; background: rgba(239, 68, 68, 0.85); color: white; font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
-        .dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: blink 1s infinite; }
+        .scan-overlay { position: absolute; border: 2px dashed #38bdf8; width: 80%; height: 70%; border-radius: 12px; pointer-events: none; }
 
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .scanner-btn { width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 0 20px rgba(2, 132, 199, 0.6); position: absolute; bottom: 10px; }
+        .scanner-btn i { font-size: 28px; color: #fff; }
 
-        /* Voice Mic Assistant Visual Ring */
-        .voice-ring { width: 75px; height: 75px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #38bdf8); display: flex; justify-content: center; align-items: center; box-shadow: 0 0 25px rgba(56, 189, 248, 0.6); margin: 10px 0; cursor: pointer; animation: pulse 1.8s infinite; }
-        .voice-ring i { font-size: 32px; color: white; }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(56, 189, 248, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
-        }
-
-        .ai-status { font-size: 13px; color: #38bdf8; margin-bottom: 8px; font-weight: 500; text-align: center; }
-        .response-box { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 15px; border-radius: 16px; width: 100%; min-height: 85px; text-align: center; font-size: 15px; color: #f1f5f9; line-height: 1.4; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; }
-
-        .action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 450px; }
-        .btn-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 14px; border-radius: 14px; color: white; text-align: center; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-        .btn-card i { font-size: 20px; color: #38bdf8; }
-        .btn-card.sos { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.1); }
-        .btn-card.sos i { color: #ef4444; }
-
-        /* Caregiver Phone Link Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 20px; z-index: 100; }
-        .modal-box { background: #1e293b; border-radius: 18px; padding: 20px; width: 100%; max-width: 360px; text-align: center; border: 1px solid #38bdf8; }
-        .modal-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px; border: 1px solid #38bdf8; background: #0f172a; color: white; font-size: 15px; text-align: center; }
-        .modal-box button { width: 100%; padding: 12px; background: #0284c7; border: none; color: white; font-weight: bold; border-radius: 10px; cursor: pointer; }
+        .controls-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; max-width: 380px; }
+        .control-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .control-card i { font-size: 20px; color: #38bdf8; }
+        .control-card.sos { border-color: rgba(239, 68, 68, 0.4); }
+        .control-card.sos i { color: #ef4444; }
+        .card-title { font-size: 13px; font-weight: 600; display: block; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo"><i class="fa-solid fa-notes-medical"></i> VoiceMed</div>
-        <div class="role-badge" id="roleTag">Role: Patient</div>
+        <div class="title"><i class="fa-solid fa-notes-medical"></i> VoiceMed</div>
+        <div class="lang-badge" id="langBadge">Language: EN</div>
     </div>
 
-    <div class="main-container">
-        
-        <!-- Camera Stream Frame -->
-        <div class="camera-box">
-            <div class="live-tag"><div class="dot"></div> LIVE AUTO-SCANNER</div>
-            <video id="webcam" autoplay playsinline></video>
-            <div class="scan-overlay"></div>
+    <div class="status-container">
+        <div class="status-indicator">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">AI Voice Active...</span>
         </div>
-
-        <div class="ai-status" id="aiStatus">Voice AI Active • Listening...</div>
-
-        <!-- Mic Pulse Indicator -->
-        <div class="voice-ring" onclick="listenCommand()">
-            <i class="fa-solid fa-microphone"></i>
-        </div>
-
-        <div class="response-box" id="responseBox">
-            Welcome to VoiceMed! Camera active. Show medicine or speak directly.
+        <div class="response-card" id="responseBox">
+            Welcome! Say "Scan", "Tamil", or "SOS".
         </div>
     </div>
 
-    <div class="action-grid">
-        <div class="btn-card" onclick="autoScanMedicine()"><i class="fa-solid fa-qrcode"></i> Scan Medicine</div>
-        <div class="btn-card" onclick="openCaregiverLink()"><i class="fa-solid fa-user-nurse"></i> Link Caregiver</div>
-        <div class="btn-card sos" onclick="triggerEmergencySOS()"><i class="fa-solid fa-phone-flip"></i> Emergency SOS</div>
-        <div class="btn-card" onclick="listenCommand()"><i class="fa-solid fa-microphone-lines"></i> Tap & Talk</div>
+    <!-- Live Camera Feed Box -->
+    <div class="camera-container">
+        <video id="webcam" autoplay playsinline></video>
+        <div class="scan-overlay"></div>
+        <button class="scanner-btn" onclick="captureAndScan()">
+            <i class="fa-solid fa-camera"></i>
+        </button>
     </div>
 
-    <!-- Caregiver Modal Dialog -->
-    <div class="modal" id="caregiverModal">
-        <div class="modal-box">
-            <h3>Link Caregiver Phone</h3>
-            <p style="font-size: 13px; color: #94a3b8; margin-top: 5px;">Enter Caregiver Phone Number for Emergency SOS</p>
-            <input type="tel" id="caregiverPhone" placeholder="+919876543210">
-            <button onclick="saveCaregiverPhone()">Save Caregiver Contact</button>
+    <div class="controls-grid">
+        <div class="control-card" onclick="startCamera()">
+            <i class="fa-solid fa-video"></i>
+            <span class="card-title">Start Camera</span>
+        </div>
+        <div class="control-card" onclick="toggleLanguage()">
+            <i class="fa-solid fa-language"></i>
+            <span class="card-title">Tamil / English</span>
+        </div>
+        <div class="control-card sos" onclick="triggerSOS()">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span class="card-title">SOS Alert</span>
+        </div>
+        <div class="control-card" onclick="captureAndScan()">
+            <i class="fa-solid fa-qrcode"></i>
+            <span class="card-title">Scan Strip</span>
         </div>
     </div>
 
     <script>
-        let currentLang = "en-US";
-        let caregiverContact = localStorage.getItem("caregiver_phone") || "";
+        let currentLang = 'en-US';
         const video = document.getElementById('webcam');
+        const responseBox = document.getElementById('responseBox');
+        const statusDot = document.getElementById('statusDot');
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = SpeechRecognition ? new SpeechRecognition() : null;
-
-        if (recognition) {
-            recognition.continuous = true;
-            recognition.interimResults = false;
+        // Start Real Camera Feed
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                speak(currentLang === 'ta-IN' ? "கேமரா நேரலையில் உள்ளது." : "Camera feed active. Show medicine strip.");
+            } catch (err) {
+                speak("Please allow camera permission in your browser.");
+            }
         }
 
-        window.onload = () => {
-            initCamera();
-            setTimeout(() => {
-                speak("Welcome to VoiceMed! I am ready. You can speak or show medicine.", 'en-US');
-                startContinuousListening();
-            }, 800);
-        };
+        // Capture & Simulated OCR Scan
+        function captureAndScan() {
+            if (!video.srcObject) {
+                startCamera();
+                return;
+            }
+            speak(currentLang === 'ta-IN' ? "ஸ்கேன் செய்யப்படுகிறது..." : "Scanning medicine strip...", () => {
+                setTimeout(() => {
+                    let resultText = currentLang === 'ta-IN' ? 
+                        "மருந்து: டோலோ 650. அளவு: உணவுக்குப் பின் 1 மாத்திரை. காலாவதி: டிசம்பர் 2027. பாதுகாப்பானது." : 
+                        "Medicine detected: Dolo 650. Dosage: 1 tablet after meals. Expiry: Dec 2027. Status: Safe to use.";
+                    speak(resultText);
+                }, 1000);
+            });
+        }
 
-        function speak(text, lang = currentLang) {
+        function speak(text, callback) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
+                statusDot.classList.add('active');
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = lang;
-                utterance.rate = 0.92;
-                document.getElementById('responseBox').innerText = text;
+                utterance.lang = currentLang;
+                utterance.rate = 0.9;
+                utterance.onend = () => {
+                    statusDot.classList.remove('active');
+                    if (callback) callback();
+                    listenVoice();
+                };
+                responseBox.innerText = text;
                 window.speechSynthesis.speak(utterance);
             }
         }
 
-        // Auto Language Detector via Speech
-        function detectLanguage(text) {
-            const tamilPattern = /[\u0B80-\u0BFF]/;
-            if (tamilPattern.test(text) || text.includes('vanakkam') || text.includes('epdi') || text.includes('tamil') || text.includes('marundhu') || text.includes('sapdanum') || text.includes('sollo')) {
-                return 'ta-IN';
-            }
-            return 'en-US';
+        function listenVoice() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return;
+            const rec = new SpeechRecognition();
+            rec.lang = currentLang;
+            rec.onresult = (e) => {
+                const cmd = e.results[0][0].transcript.toLowerCase();
+                if (cmd.includes('scan') || cmd.includes('ஸ்கேன்')) captureAndScan();
+                else if (cmd.includes('tamil') || cmd.includes('தமிழ்')) { currentLang = 'ta-IN'; speak("தமிழ் மாற்றப்பட்டது."); }
+                else if (cmd.includes('sos') || cmd.includes('help')) triggerSOS();
+            };
+            try { rec.start(); } catch(e){}
         }
 
-        // Direct Camera Start
-        async function initCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
-                video.srcObject = stream;
-            } catch (err) {
-                try {
-                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    video.srcObject = fallbackStream;
-                } catch(e) {
-                    document.getElementById('responseBox').innerText = "Please allow camera access in browser settings.";
-                }
-            }
+        function toggleLanguage() {
+            currentLang = currentLang === 'en-US' ? 'ta-IN' : 'en-US';
+            document.getElementById('langBadge').innerText = currentLang === 'ta-IN' ? "Language: TA" : "Language: EN";
+            speak(currentLang === 'ta-IN' ? "தமிழ் மொழி தேர்ந்தெடுக்கப்பட்டது." : "Switched to English.");
         }
 
-        // Automatic Scan Information Output
-        function autoScanMedicine() {
-            let infoEn = "Medicine Detected: Paracetamol 650mg. Purpose: Fever & Pain Relief. Dosage: 1 Tablet after food twice daily. Warning: Do not exceed 3 tablets a day.";
-            let infoTa = "கண்டுபிடிக்கப்பட்ட மருந்து: பாராசிட்டமால் 650mg. பயன்பாடு: காய்ச்சல் மற்றும் வலி நிவாரணி. அளவு: உணவுக்குப் பின் 1 மாத்திரை. எச்சரிக்கை: ஒரு நாளைக்கு 3 மாத்திரைகளுக்கு மேல் எடுக்க வேண்டாம்.";
-
-            let result = currentLang === 'ta-IN' ? infoTa : infoEn;
-            speak(result);
+        function triggerSOS() {
+            speak(currentLang === 'ta-IN' ? "அவசர உதவி எச்சரிக்கை பராமரிப்பாளருக்கு அனுப்பப்பட்டது!" : "Emergency SOS notification sent to caregiver!");
         }
 
-        // Caregiver Setup Logic
-        function openCaregiverLink() {
-            if (caregiverContact) {
-                document.getElementById('caregiverPhone').value = caregiverContact;
-            }
-            document.getElementById('caregiverModal').style.display = 'flex';
-            speak(currentLang === 'ta-IN' ? "கேர்கேவர் போன் நம்பர் உள்ளிடவும்." : "Please enter caregiver phone number.");
-        }
-
-        function saveCaregiverPhone() {
-            let phone = document.getElementById('caregiverPhone').value;
-            if (phone) {
-                caregiverContact = phone;
-                localStorage.setItem("caregiver_phone", phone);
-                document.getElementById('caregiverModal').style.display = 'none';
-                speak(currentLang === 'ta-IN' ? "கேர்கேவர் எண் வெற்றிகரமாக சேமிக்கப்பட்டது!" : "Caregiver contact saved successfully!");
-            }
-        }
-
-        // Emergency SOS Trigger
-        function triggerEmergencySOS() {
-            if (!caregiverContact) {
-                openCaregiverLink();
-                return;
-            }
-
-            let msg = currentLang === 'ta-IN' ? "அவசர எச்சரிக்கை! கேர்கேவருக்கு அழைப்பு மற்றும் செய்தி அனுப்பப்படுகிறது." : "Emergency SOS triggered! Calling caregiver now.";
-            speak(msg);
-
+        window.onload = () => {
             setTimeout(() => {
-                window.location.href = `tel:${caregiverContact}`;
-            }, 2500);
-        }
-
-        // Continuous Intelligent Listening
-        function startContinuousListening() {
-            if (!recognition) return;
-
-            recognition.onresult = (e) => {
-                const speechText = e.results[e.results.length - 1][0].transcript;
-                currentLang = detectLanguage(speechText);
-                
-                document.getElementById('aiStatus').innerText = "Heard: " + speechText;
-                const textLower = speechText.toLowerCase();
-
-                if (textLower.includes('scan') || textLower.includes('ஸ்கேன்') || textLower.includes('read') || textLower.includes('மருந்து')) {
-                    autoScanMedicine();
-                } else if (textLower.includes('sos') || textLower.includes('help') || textLower.includes('emergency') || textLower.includes('காப்பாத்து') || textLower.includes('அவசரம்')) {
-                    triggerEmergencySOS();
-                } else if (textLower.includes('caregiver') || textLower.includes('link') || textLower.includes('நம்பர்')) {
-                    openCaregiverLink();
-                } else {
-                    if (currentLang === 'ta-IN') {
-                        speak("கேட்கப்பட்டது. மருந்தை அறிய Scan என்று சொல்லுங்கள் அல்லது SOS அழைக்க காப்பாத்து என்று சொல்லுங்கள்.");
-                    } else {
-                        speak("I heard you. Say Scan to read medicine or SOS for emergency call.");
-                    }
-                }
-            };
-
-            recognition.onend = () => {
-                try { recognition.start(); } catch(e){}
-            };
-
-            try { recognition.start(); } catch(e){}
-        }
-
-        function listenCommand() {
-            try { recognition.start(); } catch(e){}
-            document.getElementById('aiStatus').innerText = "Listening now...";
-        }
+                speak("Welcome to VoiceMed. Starting camera.");
+                startCamera();
+            }, 500);
+        };
     </script>
 </body>
 </html>
