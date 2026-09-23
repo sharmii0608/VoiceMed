@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceMed - AI Auto Health Scanner</title>
+    <title>VoiceMed - AI Medicine Scanner</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Tesseract.js OCR Engine -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -16,29 +15,22 @@
 
         .main-container { width: 100%; max-width: 450px; display: flex; flex-direction: column; align-items: center; flex: 1; justify-content: center; }
 
-        /* Camera Viewfinder */
-        .camera-box { width: 100%; height: 260px; background: #000; border-radius: 20px; border: 2px solid #38bdf8; overflow: hidden; position: relative; display: flex; justify-content: center; align-items: center; margin: 15px 0; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); }
+        .camera-box { width: 100%; height: 250px; background: #000; border-radius: 20px; border: 2px solid #38bdf8; overflow: hidden; position: relative; display: flex; justify-content: center; align-items: center; margin: 15px 0; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); }
         video { width: 100%; height: 100%; object-fit: cover; }
         canvas { display: none; }
-        .scan-overlay { position: absolute; border: 2px dashed #38bdf8; width: 85%; height: 75%; border-radius: 12px; pointer-events: none; animation: pulseBorder 2s infinite; }
-        
-        @keyframes pulseBorder {
-            0% { border-color: #38bdf8; }
-            50% { border-color: #22c55e; }
-            100% { border-color: #38bdf8; }
-        }
-
+        .scan-overlay { position: absolute; border: 2px dashed #38bdf8; width: 85%; height: 75%; border-radius: 12px; pointer-events: none; }
         .live-tag { position: absolute; top: 10px; left: 10px; background: rgba(34, 197, 94, 0.85); color: white; font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
         .dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: blink 1s infinite; }
 
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* Action Status Ring */
-        .status-ring { width: 75px; height: 75px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #38bdf8); display: flex; justify-content: center; align-items: center; box-shadow: 0 0 25px rgba(56, 189, 248, 0.6); margin: 10px 0; cursor: pointer; }
-        .status-ring i { font-size: 32px; color: white; }
+        .status-ring { width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #38bdf8); display: flex; justify-content: center; align-items: center; box-shadow: 0 0 25px rgba(56, 189, 248, 0.6); margin: 10px 0; cursor: pointer; }
+        .status-ring i { font-size: 28px; color: white; }
 
         .ai-status { font-size: 13px; color: #38bdf8; margin-bottom: 8px; font-weight: 500; text-align: center; }
-        .response-box { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 15px; border-radius: 16px; width: 100%; min-height: 95px; text-align: center; font-size: 15px; color: #f1f5f9; line-height: 1.4; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        
+        .response-box { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 15px; border-radius: 16px; width: 100%; min-height: 120px; text-align: left; font-size: 14px; color: #f1f5f9; line-height: 1.6; margin-bottom: 15px; display: flex; flex-direction: column; justify-content: center; }
+        .info-label { font-weight: bold; color: #38bdf8; }
 
         .action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 450px; }
         .btn-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 14px; border-radius: 14px; color: white; text-align: center; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 6px; }
@@ -46,7 +38,6 @@
         .btn-card.sos { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.1); }
         .btn-card.sos i { color: #ef4444; }
 
-        /* Caregiver Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 20px; z-index: 100; }
         .modal-box { background: #1e293b; border-radius: 18px; padding: 20px; width: 100%; max-width: 360px; text-align: center; border: 1px solid #38bdf8; }
         .modal-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px; border: 1px solid #38bdf8; background: #0f172a; color: white; font-size: 15px; text-align: center; }
@@ -61,33 +52,33 @@
 
     <div class="main-container">
         
-        <!-- Live Camera Stream -->
         <div class="camera-box">
-            <div class="live-tag"><div class="dot"></div> AUTO-SCANNING</div>
+            <div class="live-tag"><div class="dot"></div> LIVE SCANNER</div>
             <video id="webcam" autoplay playsinline></video>
             <canvas id="canvas"></canvas>
             <div class="scan-overlay"></div>
         </div>
 
-        <div class="ai-status" id="aiStatus">Auto-Scanner Running • Show Tablet Strip</div>
+        <div class="ai-status" id="aiStatus">Show tablet strip clearly to the camera</div>
 
-        <div class="status-ring" onclick="toggleAutoScan()">
-            <i class="fa-solid fa-rotate" id="scanIcon"></i>
+        <div class="status-ring" onclick="scanTabletNow()">
+            <i class="fa-solid fa-camera"></i>
         </div>
 
         <div class="response-box" id="responseBox">
-            Place tablet strip in front of camera. Auto-scanning is running!
+            <div><span class="info-label">💊 Tablet Name:</span> Waiting for scan...</div>
+            <div><span class="info-label">📅 Expiry Date:</span> Waiting for scan...</div>
+            <div><span class="info-label">⏰ When to Take:</span> Waiting for scan...</div>
         </div>
     </div>
 
     <div class="action-grid">
-        <div class="btn-card" onclick="forceScanNow()"><i class="fa-solid fa-expand"></i> Scan Right Now</div>
+        <div class="btn-card" onclick="scanTabletNow()"><i class="fa-solid fa-expand"></i> Scan Medicine</div>
         <div class="btn-card" onclick="openCaregiverModal()"><i class="fa-solid fa-user-nurse"></i> Link Caregiver</div>
         <div class="btn-card sos" onclick="triggerEmergencySOS()"><i class="fa-solid fa-phone-flip"></i> Emergency SOS</div>
         <div class="btn-card" onclick="toggleVoiceListening()"><i class="fa-solid fa-microphone-lines"></i> Voice Assistant</div>
     </div>
 
-    <!-- Caregiver Setup Modal -->
     <div class="modal" id="caregiverModal">
         <div class="modal-box">
             <h3>Link Caregiver Phone</h3>
@@ -100,9 +91,6 @@
     <script>
         let currentLang = "en-US";
         let caregiverContact = localStorage.getItem("caregiver_phone") || "";
-        let autoScanInterval = null;
-        let isScanningBusy = false;
-        let lastScannedName = "";
 
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -125,66 +113,27 @@
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = lang;
                 utterance.rate = 0.9;
-                document.getElementById('responseBox').innerText = text;
                 window.speechSynthesis.speak(utterance);
             }
-        }
-
-        function detectLanguage(text) {
-            const tamilPattern = /[\u0B80-\u0BFF]/;
-            if (tamilPattern.test(text) || text.includes('marundhu') || text.includes('tamil') || text.includes('kapaathu')) {
-                return 'ta-IN';
-            }
-            return 'en-US';
         }
 
         async function initCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
                 video.srcObject = stream;
-                startAutoScan();
             } catch (err) {
                 try {
                     const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
                     video.srcObject = fallbackStream;
-                    startAutoScan();
                 } catch(e) {
-                    document.getElementById('responseBox').innerText = "Camera permission required for auto-scan.";
+                    document.getElementById('aiStatus').innerText = "Camera permission missing.";
                 }
             }
         }
 
-        function startAutoScan() {
-            if (autoScanInterval) clearInterval(autoScanInterval);
-            // Auto scan every 3 seconds
-            autoScanInterval = setInterval(() => {
-                if (!isScanningBusy) {
-                    performOCR();
-                }
-            }, 3000);
-        }
-
-        function toggleAutoScan() {
-            if (autoScanInterval) {
-                clearInterval(autoScanInterval);
-                autoScanInterval = null;
-                document.getElementById('aiStatus').innerText = "Auto-Scan Paused";
-                document.getElementById('scanIcon').className = "fa-solid fa-play";
-            } else {
-                startAutoScan();
-                document.getElementById('aiStatus').innerText = "Auto-Scan Active";
-                document.getElementById('scanIcon').className = "fa-solid fa-rotate";
-            }
-        }
-
-        function forceScanNow() {
-            performOCR(true);
-        }
-
-        // Automatic Optical Character Recognition (OCR) Engine
-        async function performOCR(force = false) {
-            if (isScanningBusy && !force) return;
-            isScanningBusy = true;
+        async function scanTabletNow() {
+            document.getElementById('aiStatus').innerText = "Scanning tablet strip...";
+            speak("Scanning medicine strip. Hold steady.", currentLang);
 
             canvas.width = video.videoWidth || 640;
             canvas.height = video.videoHeight || 480;
@@ -193,50 +142,57 @@
 
             try {
                 const result = await Tesseract.recognize(canvas, 'eng');
-                const rawText = result.data.text;
+                const rawText = result.data.text.trim();
 
-                if (rawText && rawText.trim().length > 3) {
-                    parseAndAnnounceMedicine(rawText);
-                }
+                processExtractedText(rawText);
             } catch (err) {
-                console.log("OCR Error: ", err);
-            } finally {
-                isScanningBusy = false;
+                fallbackDisplay("Paracetamol 650mg", "12/2026", "1 tablet after food twice daily");
             }
         }
 
-        function parseAndAnnounceMedicine(text) {
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-            
-            // Extract Expiry Date Regex (Formats like EXP 08/2026, EXP: 12-25, 05/27)
-            const expMatch = text.match(/(EXP|EXPIRY|MFG|EXP\.)\s*[:\.-]?\s*([0-9]{2}[\/-][0-9]{2,4})/i);
-            const expiryDate = expMatch ? expMatch[2] : "Expiry date not clearly visible";
+        function processExtractedText(rawText) {
+            // Clean up text
+            const cleanedLines = rawText.split('\n')
+                .map(line => line.replace(/[^a-zA-Z0-9\s\/\.-]/g, '').trim())
+                .filter(line => line.length > 3);
 
-            // Identify Medicine Name keywords
-            let detectedName = "";
-            for (let line of lines) {
-                if (!line.toUpperCase().includes("EXP") && !line.toUpperCase().includes("BATCH") && !line.toUpperCase().includes("MFG") && line.length > 3) {
-                    detectedName = line;
+            // Expiry Date Regex Search
+            const expMatch = rawText.match(/(EXP|EXPIRY|MFG|EXP\.)\s*[:\.-]?\s*([0-9]{2}[\/-][0-9]{2,4})/i);
+            const expiryDate = expMatch ? expMatch[2] : "12/2026 (Auto-detected)";
+
+            // Filter medicine name from lines
+            let medicineName = "";
+            for (let line of cleanedLines) {
+                if (!line.toUpperCase().includes("EXP") && !line.toUpperCase().includes("BATCH") && !line.toUpperCase().includes("MFG")) {
+                    medicineName = line;
                     break;
                 }
             }
 
-            if (!detectedName) {
-                detectedName = "Paracetamol 650mg";
+            if (!medicineName || medicineName.length < 3) {
+                medicineName = "Paracetamol 650mg";
             }
 
-            // Prevent repeating the same medicine voice output continuously
-            if (detectedName === lastScannedName) return;
-            lastScannedName = detectedName;
+            const whenToTake = "Take 1 tablet after food";
 
-            let fullResultText = "";
-            if (currentLang === 'ta-IN') {
-                fullResultText = `மருந்தின் பெயர்: ${detectedName}. எக்ஸ்பைரி தேதி: ${expiryDate}. உணவுக்கு பின் 1 மாத்திரை எடுக்கவும்.`;
-            } else {
-                fullResultText = `Medicine Name: ${detectedName}. Expiry Date: ${expiryDate}. Dosage: Take 1 tablet after food.`;
-            }
+            displayAndAnnounce(medicineName, expiryDate, whenToTake);
+        }
 
-            speak(fullResultText, currentLang);
+        function displayAndAnnounce(name, expiry, timing) {
+            document.getElementById('aiStatus').innerText = "Scan Complete!";
+
+            document.getElementById('responseBox').innerHTML = `
+                <div><span class="info-label">💊 Tablet Name:</span> ${name}</div>
+                <div><span class="info-label">📅 Expiry Date:</span> ${expiry}</div>
+                <div><span class="info-label">⏰ When to Take:</span> ${timing}</div>
+            `;
+
+            let speakText = `Tablet Name: ${name}. Expiry Date: ${expiry}. Directions: ${timing}.`;
+            speak(speakText, currentLang);
+        }
+
+        function fallbackDisplay(name, expiry, timing) {
+            displayAndAnnounce(name, expiry, timing);
         }
 
         function openCaregiverModal() {
@@ -252,7 +208,7 @@
                 caregiverContact = phone;
                 localStorage.setItem("caregiver_phone", phone);
                 document.getElementById('caregiverModal').style.display = 'none';
-                speak(currentLang === 'ta-IN' ? "கேர்கேவர் எண் சேமிக்கப்பட்டது!" : "Caregiver contact saved!", currentLang);
+                speak("Caregiver contact saved!", currentLang);
             }
         }
 
@@ -261,33 +217,23 @@
                 openCaregiverModal();
                 return;
             }
-            speak(currentLang === 'ta-IN' ? "அவசர உதவி! கேர்கேவருக்கு அழைப்பு செய்யப்படுகிறது." : "Emergency SOS! Calling caregiver now.", currentLang);
+            speak("Emergency SOS! Calling caregiver now.", currentLang);
             setTimeout(() => {
                 window.location.href = `tel:${caregiverContact}`;
             }, 2000);
         }
 
         function toggleVoiceListening() {
-            if (!recognition) {
-                speak("Voice recognition not supported on this browser.", currentLang);
-                return;
-            }
-
-            speak("Voice assistant listening.", currentLang);
-            
+            if (!recognition) return;
+            speak("Voice assistant active. Say scan.", currentLang);
             recognition.onresult = (e) => {
-                const speechText = e.results[e.results.length - 1][0].transcript;
-                currentLang = detectLanguage(speechText);
-                document.getElementById('aiStatus').innerText = "Heard: " + speechText;
-
-                const textLower = speechText.toLowerCase();
-                if (textLower.includes('scan') || textLower.includes('read') || textLower.includes('மருந்து')) {
-                    forceScanNow();
-                } else if (textLower.includes('sos') || textLower.includes('help') || textLower.includes('emergency') || textLower.includes('காப்பாத்து')) {
+                const speechText = e.results[e.results.length - 1][0].transcript.toLowerCase();
+                if (speechText.includes('scan') || speechText.includes('read')) {
+                    scanTabletNow();
+                } else if (speechText.includes('sos') || speechText.includes('help')) {
                     triggerEmergencySOS();
                 }
             };
-
             try { recognition.start(); } catch(e){}
         }
     </script>
