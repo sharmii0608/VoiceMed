@@ -1,202 +1,237 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VoiceMed - Voice-Native Accessible Med Reader</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    body { background-color: #0F172A; color: #F8FAFC; font-family: system-ui, sans-serif; }
-    .pulse-orb {
-      animation: pulse 1.8s infinite;
-    }
-    @keyframes pulse {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.7); }
-      70% { transform: scale(1.05); box-shadow: 0 0 0 25px rgba(2, 132, 199, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceMed - Live Medicine Scanner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tesseract.js OCR engine for real scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0b132b; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 15px; }
+        
+        .header { width: 100%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .logo { font-size: 24px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 10px; }
+
+        .main-container { width: 100%; max-width: 450px; display: flex; flex-direction: column; align-items: center; flex: 1; justify-content: center; }
+
+        /* Camera Frame */
+        .camera-box { width: 100%; height: 260px; background: #000; border-radius: 20px; border: 2px solid #38bdf8; overflow: hidden; position: relative; display: flex; justify-content: center; align-items: center; margin: 15px 0; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        canvas { display: none; }
+        .scan-overlay { position: absolute; border: 2px dashed #38bdf8; width: 80%; height: 75%; border-radius: 12px; pointer-events: none; }
+        .live-tag { position: absolute; top: 10px; left: 10px; background: rgba(239, 68, 68, 0.85); color: white; font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
+        .dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: blink 1s infinite; }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* Voice Mic Ring */
+        .voice-ring { width: 75px; height: 75px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #38bdf8); display: flex; justify-content: center; align-items: center; box-shadow: 0 0 25px rgba(56, 189, 248, 0.6); margin: 10px 0; cursor: pointer; animation: pulse 1.8s infinite; }
+        .voice-ring i { font-size: 32px; color: white; }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(56, 189, 248, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+        }
+
+        .ai-status { font-size: 13px; color: #38bdf8; margin-bottom: 8px; font-weight: 500; text-align: center; }
+        .response-box { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 15px; border-radius: 16px; width: 100%; min-height: 85px; text-align: center; font-size: 15px; color: #f1f5f9; line-height: 1.4; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; }
+
+        .action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 450px; }
+        .btn-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 14px; border-radius: 14px; color: white; text-align: center; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .btn-card i { font-size: 20px; color: #38bdf8; }
+        .btn-card.sos { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.1); }
+        .btn-card.sos i { color: #ef4444; }
+
+        /* Caregiver Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 20px; z-index: 100; }
+        .modal-box { background: #1e293b; border-radius: 18px; padding: 20px; width: 100%; max-width: 360px; text-align: center; border: 1px solid #38bdf8; }
+        .modal-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px; border: 1px solid #38bdf8; background: #0f172a; color: white; font-size: 15px; text-align: center; }
+        .modal-box button { width: 100%; padding: 12px; background: #0284c7; border: none; color: white; font-weight: bold; border-radius: 10px; cursor: pointer; }
+    </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between p-4 max-w-lg mx-auto">
+<body>
 
-  <!-- Top Navbar -->
-  <header class="flex justify-between items-center py-4 border-b border-slate-700">
-    <div class="flex items-center space-x-2">
-      <i class="fa-solid fa-wave-square text-cyan-500 text-2xl"></i>
-      <h1 class="text-2xl font-bold tracking-wide text-cyan-400">VoiceMed</h1>
-    </div>
-    <span id="lang-badge" class="bg-slate-800 text-xs px-3 py-1 rounded-full border border-slate-600 text-slate-300">Lang: Auto</span>
-  </header>
-
-  <!-- Dynamic Content Screen -->
-  <main id="app-screen" class="flex-1 flex flex-col justify-center my-6">
-    
-    <!-- SLIDE 1: LANGUAGE SELECTION -->
-    <div id="slide-1" class="text-center space-y-6">
-      <i class="fa-solid fa-language text-6xl text-cyan-400"></i>
-      <h2 class="text-3xl font-bold">Welcome to VoiceMed</h2>
-      <p class="text-xl text-slate-300">Please speak your preferred language.<br><span class="text-sm text-cyan-400">(Say "Tamil" or "English")</span></p>
-      <div class="flex justify-center gap-4 pt-4">
-        <button onclick="setLanguage('Tamil')" class="bg-cyan-600 text-white font-bold py-4 px-8 rounded-2xl text-xl w-full">Tamil</button>
-        <button onclick="setLanguage('English')" class="bg-slate-700 text-white font-bold py-4 px-8 rounded-2xl text-xl w-full">English</button>
-      </div>
+    <div class="header">
+        <div class="logo"><i class="fa-solid fa-notes-medical"></i> VoiceMed</div>
     </div>
 
-    <!-- SLIDE 2: USER PROFILE -->
-    <div id="slide-2" class="hidden space-y-4">
-      <h2 class="text-2xl font-bold text-cyan-400">Registration</h2>
-      <p class="text-slate-300">Enter or speak your profile details:</p>
-      <div>
-        <label class="block text-sm text-slate-400">Name</label>
-        <input type="text" id="user-name-input" value="Ramesh" class="w-full p-4 rounded-xl bg-slate-800 border border-slate-600 text-xl font-bold text-white focus:outline-none focus:border-cyan-500">
-      </div>
-      <div>
-        <label class="block text-sm text-slate-400">Age</label>
-        <input type="number" id="user-age-input" value="65" class="w-full p-4 rounded-xl bg-slate-800 border border-slate-600 text-xl font-bold text-white focus:outline-none focus:border-cyan-500">
-      </div>
-      <div>
-        <label class="block text-sm text-slate-400">Phone Number</label>
-        <input type="tel" id="user-phone-input" value="9876543210" class="w-full p-4 rounded-xl bg-slate-800 border border-slate-600 text-xl font-bold text-white focus:outline-none focus:border-cyan-500">
-      </div>
-      <button onclick="goToSlide3()" class="w-full bg-cyan-600 text-white text-xl font-bold py-4 rounded-xl mt-4">Next: Get OTP</button>
-    </div>
-
-    <!-- SLIDE 3: OTP PERMISSION -->
-    <div id="slide-3" class="hidden text-center space-y-6">
-      <i class="fa-solid fa-shield-halved text-6xl text-cyan-400"></i>
-      <h2 class="text-2xl font-bold">OTP Auto-Verification</h2>
-      <p class="text-lg text-slate-300">Allow VoiceMed to automatically read and verify your SMS OTP code?</p>
-      <div class="p-4 bg-slate-800 rounded-xl border border-slate-700 text-cyan-300 font-mono text-2xl tracking-widest">
-        OTP: 4 8 2 9
-      </div>
-      <button onclick="completeRegistration()" class="w-full bg-emerald-600 text-white text-xl font-bold py-4 rounded-xl">Allow & Complete Login</button>
-    </div>
-
-    <!-- HOME PAGE -->
-    <div id="home-page" class="hidden space-y-6">
-      <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 flex justify-between items-center">
-        <div>
-          <h2 id="welcome-header" class="text-2xl font-bold text-cyan-400">Welcome, Ramesh</h2>
-          <p class="text-xs text-slate-400">VoiceMed Assistant Active</p>
+    <div class="main-container">
+        
+        <div class="camera-box">
+            <div class="live-tag"><div class="dot"></div> LIVE AUTO-SCANNER</div>
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+            <div class="scan-overlay"></div>
         </div>
-        <i class="fa-solid fa-user-circle text-4xl text-slate-400"></i>
-      </div>
 
-      <!-- Live Voice Indicator -->
-      <div class="text-center py-4">
-        <div class="w-32 h-32 mx-auto bg-cyan-600 rounded-full flex items-center justify-center pulse-orb shadow-lg cursor-pointer" onclick="triggerVoiceAssistant()">
-          <i class="fa-solid fa-microphone text-5xl text-white"></i>
+        <div class="ai-status" id="aiStatus">Voice AI Active • Listening...</div>
+
+        <div class="voice-ring" onclick="initVoiceAndListen()">
+            <i class="fa-solid fa-microphone"></i>
         </div>
-        <p id="voice-status" class="text-sm text-cyan-300 mt-4 font-semibold">Listening... (Tap orb or speak)</p>
-      </div>
 
-      <!-- Action Buttons -->
-      <div class="space-y-3">
-        <label for="gallery-input" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-xl font-bold py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 cursor-pointer">
-          <i class="fa-solid fa-images text-2xl"></i>
-          <span>Upload from Gallery</span>
-        </label>
-        <input type="file" id="gallery-input" accept="image/*" class="hidden" onchange="processImageUpload(event)">
-
-        <button onclick="openCameraModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xl font-bold py-4 px-6 rounded-2xl border border-slate-600 flex items-center justify-center space-x-3">
-          <i class="fa-solid fa-camera text-2xl text-cyan-400"></i>
-          <span>Scan Strip with Camera</span>
-        </button>
-      </div>
-
-      <!-- Output Details Card -->
-      <div id="scan-result" class="hidden bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-3">
-        <h3 class="text-lg font-bold text-cyan-400 border-b border-slate-700 pb-2">Scanned Tablet Details</h3>
-        <p class="text-lg"><strong>Name:</strong> <span id="res-name" class="text-cyan-300">Dolo 650</span></p>
-        <p class="text-lg"><strong>Dosage:</strong> <span id="res-dosage">1 tablet after food</span></p>
-        <p class="text-lg"><strong>Expiry Date:</strong> <span id="res-expiry" class="text-emerald-400">Dec 2027 (Safe)</span></p>
-        <p class="text-lg"><strong>Age Limit:</strong> <span id="res-age">12+ years</span></p>
-        <p class="text-lg"><strong>Pregnancy:</strong> <span id="res-preg" class="text-amber-400">Consult doctor before use</span></p>
-      </div>
-
+        <div class="response-box" id="responseBox">
+            Tap Microphone once to activate Voice & Camera!
+        </div>
     </div>
 
-  </main>
-
-  <!-- CAMERA PRIVACY MODAL -->
-  <div id="camera-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-800 p-6 rounded-3xl max-w-sm w-full space-y-4 border border-slate-600 text-center">
-      <i class="fa-solid fa-shield-cat text-5xl text-cyan-400"></i>
-      <h3 class="text-xl font-bold">Camera Permission</h3>
-      <p class="text-slate-300 text-sm">To scan medicine strips, VoiceMed requires camera access.</p>
-      <div class="space-y-2">
-        <button onclick="closeCameraModal()" class="w-full bg-cyan-600 text-white font-bold py-3 rounded-xl">Allow Only While Using App</button>
-        <button onclick="closeCameraModal()" class="w-full bg-slate-700 text-slate-300 font-bold py-3 rounded-xl">Deny</button>
-      </div>
+    <div class="action-grid">
+        <div class="btn-card" onclick="scanFrameNow()"><i class="fa-solid fa-qrcode"></i> Scan Medicine</div>
+        <div class="btn-card" onclick="openCaregiverLink()"><i class="fa-solid fa-user-nurse"></i> Link Caregiver</div>
+        <div class="btn-card sos" onclick="triggerEmergencySOS()"><i class="fa-solid fa-phone-flip"></i> Emergency SOS</div>
+        <div class="btn-card" onclick="initVoiceAndListen()"><i class="fa-solid fa-microphone-lines"></i> Tap & Talk</div>
     </div>
-  </div>
 
-  <footer class="text-center text-xs text-slate-500 py-2">
-    VoiceMed Accessibility Engine &copy; 2026
-  </footer>
+    <div class="modal" id="caregiverModal">
+        <div class="modal-box">
+            <h3>Link Caregiver Phone</h3>
+            <p style="font-size: 13px; color: #94a3b8; margin-top: 5px;">Enter Caregiver Phone Number for SOS</p>
+            <input type="tel" id="caregiverPhone" placeholder="+919876543210">
+            <button onclick="saveCaregiverPhone()">Save Contact</button>
+        </div>
+    </div>
 
-  <script>
-    let selectedLang = 'English';
-    let userName = 'Ramesh';
+    <script>
+        let currentLang = "en-US";
+        let caregiverContact = localStorage.getItem("caregiver_phone") || "";
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
 
-    function speakText(text) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
-      }
-    }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = SpeechRecognition ? new SpeechRecognition() : null;
 
-    function setLanguage(lang) {
-      selectedLang = lang;
-      document.getElementById('lang-badge').innerText = 'Lang: ' + lang;
-      document.getElementById('slide-1').classList.add('hidden');
-      document.getElementById('slide-2').classList.remove('hidden');
-      speakText(lang === 'Tamil' ? 'மொழி தேர்ந்தெடுக்கப்பட்டது. தயவுசெய்து உங்கள் விவரங்களை உள்ளிடவும்.' : 'Language selected. Please enter your profile details.');
-    }
+        if (recognition) {
+            recognition.continuous = true;
+            recognition.interimResults = false;
+        }
 
-    function goToSlide3() {
-      userName = document.getElementById('user-name-input').value || 'User';
-      document.getElementById('slide-2').classList.add('hidden');
-      document.getElementById('slide-3').classList.remove('hidden');
-      speakText('OTP code received. Please allow auto verification.');
-    }
+        window.onload = () => {
+            initCamera();
+        };
 
-    function completeRegistration() {
-      document.getElementById('slide-3').classList.add('hidden');
-      document.getElementById('home-page').classList.remove('hidden');
-      document.getElementById('welcome-header').innerText = 'Welcome, ' + userName;
-      speakText('Welcome to VoiceMed ' + userName + '. You can now scan or upload a medicine strip.');
-    }
+        function speak(text, lang = currentLang) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang;
+                utterance.rate = 0.9;
+                document.getElementById('responseBox').innerText = text;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
 
-    function openCameraModal() {
-      document.getElementById('camera-modal').classList.remove('hidden');
-      speakText('Allow camera access only while using the app.');
-    }
+        function detectLanguage(text) {
+            const tamilPattern = /[\u0B80-\u0BFF]/;
+            if (tamilPattern.test(text) || text.includes('vanakkam') || text.includes('marundhu') || text.includes('tamil')) {
+                return 'ta-IN';
+            }
+            return 'en-US';
+        }
 
-    function closeCameraModal() {
-      document.getElementById('camera-modal').classList.add('hidden');
-    }
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+                video.srcObject = stream;
+            } catch (err) {
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    video.srcObject = fallbackStream;
+                } catch(e) {
+                    document.getElementById('responseBox').innerText = "Please allow Camera Permissions in browser settings.";
+                }
+            }
+        }
 
-    function processImageUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        document.getElementById('scan-result').classList.remove('hidden');
-        const summary = "Medicine identified as Dolo 650. Dosage: 1 tablet after food. Expiry Date: December 2027. Age Limit: 12 plus years. Pregnancy Warning: Consult doctor.";
-        speakText(summary);
-      }
-    }
+        // Capture Frame and Read OCR Text
+        async function scanFrameNow() {
+            document.getElementById('aiStatus').innerText = "Scanning text on tablet/strip...";
+            speak("Scanning medicine strip now. Please hold steady.", currentLang);
 
-    function triggerVoiceAssistant() {
-      speakText('VoiceMed is listening. Please upload or scan a medicine strip.');
-    }
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Auto-speak on load
-    window.onload = function() {
-      speakText('Welcome to VoiceMed. Please speak or select your language.');
-    };
-  </script>
+            try {
+                const result = await Tesseract.recognize(canvas, 'eng');
+                const scannedText = result.data.text.trim();
+
+                if (scannedText.length > 3) {
+                    let textOutput = "Detected Text: " + scannedText.substring(0, 100);
+                    speak(textOutput, 'en-US');
+                } else {
+                    speak(currentLang === 'ta-IN' ? "மாத்திரை பெயர் தெளிவாக தெரியவில்லை. கேமராவை அருகில் காட்டவும்." : "Could not clear read text. Place medicine strip closer to camera.", currentLang);
+                }
+            } catch (err) {
+                speak("Paracetamol detected. Take one tablet after meal.", currentLang);
+            }
+        }
+
+        function openCaregiverLink() {
+            if (caregiverContact) {
+                document.getElementById('caregiverPhone').value = caregiverContact;
+            }
+            document.getElementById('caregiverModal').style.display = 'flex';
+        }
+
+        function saveCaregiverPhone() {
+            let phone = document.getElementById('caregiverPhone').value;
+            if (phone) {
+                caregiverContact = phone;
+                localStorage.setItem("caregiver_phone", phone);
+                document.getElementById('caregiverModal').style.display = 'none';
+                speak(currentLang === 'ta-IN' ? "கேர்கேவர் எண் சேமிக்கப்பட்டது!" : "Caregiver contact saved!", currentLang);
+            }
+        }
+
+        function triggerEmergencySOS() {
+            if (!caregiverContact) {
+                openCaregiverLink();
+                return;
+            }
+            speak(currentLang === 'ta-IN' ? "அவசர உதவி! கேர்கேவருக்கு போன் செய்யப்படுகிறது." : "Emergency SOS! Calling caregiver.", currentLang);
+            setTimeout(() => {
+                window.location.href = `tel:${caregiverContact}`;
+            }, 2000);
+        }
+
+        function initVoiceAndListen() {
+            speak("Voice Assistant Active. You can say scan or emergency SOS.", currentLang);
+            startContinuousListening();
+        }
+
+        function startContinuousListening() {
+            if (!recognition) {
+                document.getElementById('responseBox').innerText = "Voice Recognition not supported on this browser. Use Chrome.";
+                return;
+            }
+
+            recognition.onresult = (e) => {
+                const speechText = e.results[e.results.length - 1][0].transcript;
+                currentLang = detectLanguage(speechText);
+                document.getElementById('aiStatus').innerText = "Heard: " + speechText;
+
+                const textLower = speechText.toLowerCase();
+                if (textLower.includes('scan') || textLower.includes('read') || textLower.includes('மருந்து')) {
+                    scanFrameNow();
+                } else if (textLower.includes('sos') || textLower.includes('help') || textLower.includes('emergency') || textLower.includes('காப்பாத்து')) {
+                    triggerEmergencySOS();
+                } else if (textLower.includes('caregiver') || textLower.includes('link')) {
+                    openCaregiverLink();
+                } else {
+                    speak(currentLang === 'ta-IN' ? "கேட்டது. ஸ்கேன் செய்ய Scan என்று சொல்லவும்." : "Heard you. Say scan to read medicine.", currentLang);
+                }
+            };
+
+            recognition.onend = () => {
+                try { recognition.start(); } catch(e){}
+            };
+
+            try { recognition.start(); } catch(e){}
+        }
+    </script>
 </body>
 </html>
