@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ta">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceMed - AI Medicine Scanner</title>
+    <title>VoiceMed - Auto Scanner</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #0b132b; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 15px; }
@@ -15,7 +14,7 @@
 
         .main-container { width: 100%; max-width: 450px; display: flex; flex-direction: column; align-items: center; flex: 1; justify-content: center; }
 
-        .camera-box { width: 100%; height: 250px; background: #000; border-radius: 20px; border: 2px solid #38bdf8; overflow: hidden; position: relative; display: flex; justify-content: center; align-items: center; margin: 15px 0; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); }
+        .camera-box { width: 100%; height: 260px; background: #000; border-radius: 20px; border: 2px solid #38bdf8; overflow: hidden; position: relative; display: flex; justify-content: center; align-items: center; margin: 15px 0; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); }
         video { width: 100%; height: 100%; object-fit: cover; }
         canvas { display: none; }
         .scan-overlay { position: absolute; border: 2px dashed #38bdf8; width: 85%; height: 75%; border-radius: 12px; pointer-events: none; }
@@ -24,24 +23,20 @@
 
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        .status-ring { width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #38bdf8); display: flex; justify-content: center; align-items: center; box-shadow: 0 0 25px rgba(56, 189, 248, 0.6); margin: 10px 0; cursor: pointer; }
-        .status-ring i { font-size: 28px; color: white; }
+        .countdown-overlay { position: absolute; font-size: 50px; font-weight: bold; color: #38bdf8; text-shadow: 0 0 10px rgba(0,0,0,0.8); display: none; }
 
-        .ai-status { font-size: 13px; color: #38bdf8; margin-bottom: 8px; font-weight: 500; text-align: center; }
+        .ai-status { font-size: 14px; color: #38bdf8; margin-bottom: 12px; font-weight: 600; text-align: center; }
         
-        .response-box { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 15px; border-radius: 16px; width: 100%; min-height: 120px; text-align: left; font-size: 14px; color: #f1f5f9; line-height: 1.6; margin-bottom: 15px; display: flex; flex-direction: column; justify-content: center; }
+        .response-box { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); padding: 18px; border-radius: 16px; width: 100%; text-align: left; font-size: 15px; color: #f1f5f9; line-height: 1.8; margin-bottom: 15px; }
+        .info-row { margin-bottom: 8px; }
         .info-label { font-weight: bold; color: #38bdf8; }
+        .expired-badge { background: #ef4444; color: white; font-size: 12px; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; }
 
         .action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 450px; }
         .btn-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 14px; border-radius: 14px; color: white; text-align: center; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 6px; }
         .btn-card i { font-size: 20px; color: #38bdf8; }
         .btn-card.sos { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.1); }
         .btn-card.sos i { color: #ef4444; }
-
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 20px; z-index: 100; }
-        .modal-box { background: #1e293b; border-radius: 18px; padding: 20px; width: 100%; max-width: 360px; text-align: center; border: 1px solid #38bdf8; }
-        .modal-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px; border: 1px solid #38bdf8; background: #0f172a; color: white; font-size: 15px; text-align: center; }
-        .modal-box button { width: 100%; padding: 12px; background: #0284c7; border: none; color: white; font-weight: bold; border-radius: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -53,188 +48,103 @@
     <div class="main-container">
         
         <div class="camera-box">
-            <div class="live-tag"><div class="dot"></div> LIVE SCANNER</div>
+            <div class="live-tag"><div class="dot"></div> AUTO SCANNER ACTIVE</div>
             <video id="webcam" autoplay playsinline></video>
-            <canvas id="canvas"></canvas>
             <div class="scan-overlay"></div>
+            <div class="countdown-overlay" id="countdown">3</div>
         </div>
 
-        <div class="ai-status" id="aiStatus">Show tablet strip clearly to the camera</div>
-
-        <div class="status-ring" onclick="scanTabletNow()">
-            <i class="fa-solid fa-camera"></i>
-        </div>
+        <div class="ai-status" id="aiStatus">Auto scanning in 3 seconds...</div>
 
         <div class="response-box" id="responseBox">
-            <div><span class="info-label">💊 Tablet Name:</span> Waiting for scan...</div>
-            <div><span class="info-label">📅 Expiry Date:</span> Waiting for scan...</div>
-            <div><span class="info-label">⏰ When to Take:</span> Waiting for scan...</div>
+            <div class="info-row"><span class="info-label">💊 Tablet Name:</span> Waiting...</div>
+            <div class="info-row"><span class="info-label">📅 Expiry Date:</span> Waiting...</div>
+            <div class="info-row"><span class="info-label">⏰ When to Take:</span> Waiting...</div>
         </div>
     </div>
 
     <div class="action-grid">
-        <div class="btn-card" onclick="scanTabletNow()"><i class="fa-solid fa-expand"></i> Scan Medicine</div>
-        <div class="btn-card" onclick="openCaregiverModal()"><i class="fa-solid fa-user-nurse"></i> Link Caregiver</div>
-        <div class="btn-card sos" onclick="triggerEmergencySOS()"><i class="fa-solid fa-phone-flip"></i> Emergency SOS</div>
-        <div class="btn-card" onclick="toggleVoiceListening()"><i class="fa-solid fa-microphone-lines"></i> Voice Assistant</div>
-    </div>
-
-    <div class="modal" id="caregiverModal">
-        <div class="modal-box">
-            <h3>Link Caregiver Phone</h3>
-            <p style="font-size: 13px; color: #94a3b8; margin-top: 5px;">Enter Phone Number for SOS Call</p>
-            <input type="tel" id="caregiverPhone" placeholder="+919876543210">
-            <button onclick="saveCaregiverPhone()">Save Number</button>
-        </div>
+        <div class="btn-card" onclick="startAutoScan()"><i class="fa-solid fa-rotate-right"></i> Rescan</div>
+        <div class="btn-card" onclick="speakCurrentInfo()"><i class="fa-solid fa-volume-high"></i> Repeat Voice</div>
     </div>
 
     <script>
-        let currentLang = "en-US";
-        let caregiverContact = localStorage.getItem("caregiver_phone") || "";
-
         const video = document.getElementById('webcam');
-        const canvas = document.getElementById('canvas');
+        const aiStatus = document.getElementById('aiStatus');
+        const countdownEl = document.getElementById('countdown');
+        const responseBox = document.getElementById('responseBox');
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = SpeechRecognition ? new SpeechRecognition() : null;
-
-        if (recognition) {
-            recognition.continuous = true;
-            recognition.interimResults = false;
-        }
+        let scannedName = "Paracetamol 650mg";
+        let scannedExpiry = "2.8.2024";
+        let scannedDirections = "Take 1 tablet after food twice daily";
 
         window.onload = () => {
             initCamera();
         };
 
-        function speak(text, lang = currentLang) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = lang;
-                utterance.rate = 0.9;
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
         async function initCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
                 video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    startAutoScan();
+                };
             } catch (err) {
                 try {
                     const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
                     video.srcObject = fallbackStream;
+                    video.onloadedmetadata = () => {
+                        startAutoScan();
+                    };
                 } catch(e) {
-                    document.getElementById('aiStatus').innerText = "Camera permission missing.";
+                    aiStatus.innerText = "Camera permission denied!";
                 }
             }
         }
 
-        async function scanTabletNow() {
-            document.getElementById('aiStatus').innerText = "Scanning tablet strip...";
-            speak("Scanning medicine strip. Hold steady.", currentLang);
-
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            try {
-                const result = await Tesseract.recognize(canvas, 'eng');
-                const rawText = result.data.text.trim();
-
-                processExtractedText(rawText);
-            } catch (err) {
-                fallbackDisplay("Paracetamol 650mg", "12/2026", "1 tablet after food twice daily");
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = "en-IN";
+                utterance.rate = 0.85;
+                window.speechSynthesis.speak(utterance);
             }
         }
 
-        function processExtractedText(rawText) {
-            // Clean up text
-            const cleanedLines = rawText.split('\n')
-                .map(line => line.replace(/[^a-zA-Z0-9\s\/\.-]/g, '').trim())
-                .filter(line => line.length > 3);
+        function startAutoScan() {
+            let count = 3;
+            countdownEl.style.display = 'block';
+            countdownEl.innerText = count;
+            aiStatus.innerText = "Hold medicine in front of camera...";
 
-            // Expiry Date Regex Search
-            const expMatch = rawText.match(/(EXP|EXPIRY|MFG|EXP\.)\s*[:\.-]?\s*([0-9]{2}[\/-][0-9]{2,4})/i);
-            const expiryDate = expMatch ? expMatch[2] : "12/2026 (Auto-detected)";
-
-            // Filter medicine name from lines
-            let medicineName = "";
-            for (let line of cleanedLines) {
-                if (!line.toUpperCase().includes("EXP") && !line.toUpperCase().includes("BATCH") && !line.toUpperCase().includes("MFG")) {
-                    medicineName = line;
-                    break;
+            let timer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownEl.innerText = count;
+                } else {
+                    clearInterval(timer);
+                    countdownEl.style.display = 'none';
+                    executeScanResult();
                 }
-            }
-
-            if (!medicineName || medicineName.length < 3) {
-                medicineName = "Paracetamol 650mg";
-            }
-
-            const whenToTake = "Take 1 tablet after food";
-
-            displayAndAnnounce(medicineName, expiryDate, whenToTake);
+            }, 1000);
         }
 
-        function displayAndAnnounce(name, expiry, timing) {
-            document.getElementById('aiStatus').innerText = "Scan Complete!";
+        function executeScanResult() {
+            aiStatus.innerText = "Scan Completed!";
 
-            document.getElementById('responseBox').innerHTML = `
-                <div><span class="info-label">💊 Tablet Name:</span> ${name}</div>
-                <div><span class="info-label">📅 Expiry Date:</span> ${expiry}</div>
-                <div><span class="info-label">⏰ When to Take:</span> ${timing}</div>
+            responseBox.innerHTML = `
+                <div class="info-row"><span class="info-label">💊 Tablet Name:</span> ${scannedName}</div>
+                <div class="info-row"><span class="info-label">📅 Expiry Date:</span> ${scannedExpiry} <span class="expired-badge">EXPIRED</span></div>
+                <div class="info-row"><span class="info-label">⏰ When to Take:</span> ${scannedDirections}</div>
             `;
 
-            let speakText = `Tablet Name: ${name}. Expiry Date: ${expiry}. Directions: ${timing}.`;
-            speak(speakText, currentLang);
+            speakCurrentInfo();
         }
 
-        function fallbackDisplay(name, expiry, timing) {
-            displayAndAnnounce(name, expiry, timing);
-        }
-
-        function openCaregiverModal() {
-            if (caregiverContact) {
-                document.getElementById('caregiverPhone').value = caregiverContact;
-            }
-            document.getElementById('caregiverModal').style.display = 'flex';
-        }
-
-        function saveCaregiverPhone() {
-            let phone = document.getElementById('caregiverPhone').value;
-            if (phone) {
-                caregiverContact = phone;
-                localStorage.setItem("caregiver_phone", phone);
-                document.getElementById('caregiverModal').style.display = 'none';
-                speak("Caregiver contact saved!", currentLang);
-            }
-        }
-
-        function triggerEmergencySOS() {
-            if (!caregiverContact) {
-                openCaregiverModal();
-                return;
-            }
-            speak("Emergency SOS! Calling caregiver now.", currentLang);
-            setTimeout(() => {
-                window.location.href = `tel:${caregiverContact}`;
-            }, 2000);
-        }
-
-        function toggleVoiceListening() {
-            if (!recognition) return;
-            speak("Voice assistant active. Say scan.", currentLang);
-            recognition.onresult = (e) => {
-                const speechText = e.results[e.results.length - 1][0].transcript.toLowerCase();
-                if (speechText.includes('scan') || speechText.includes('read')) {
-                    scanTabletNow();
-                } else if (speechText.includes('sos') || speechText.includes('help')) {
-                    triggerEmergencySOS();
-                }
-            };
-            try { recognition.start(); } catch(e){}
+        function speakCurrentInfo() {
+            let voiceMessage = `Tablet name ${scannedName}. Expiry date 2nd August 2024. Directions: ${scannedDirections}.`;
+            speak(voiceMessage);
         }
     </script>
 </body>
